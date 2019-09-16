@@ -1,10 +1,10 @@
 /*----------------------------------------------------------------------------
 pLAB-02   Key Exchange using Public-Key Encryption
 
-Written By:  1- Your Name
-             2- Your Name
+Written By:  1- Hannah Ripley
+             2- Adrian Brazil
 
-             Submitted on: 
+             Submitted on: 9/18/2019
 ----------------------------------------------------------------------------*/
 /*
     I am Amal. I will encrypt a large file to Basim.
@@ -26,18 +26,39 @@ void main( int argc , char * argv[] )
     uint8_t  sessionKey[EVP_MAX_KEY_LENGTH] , iv[EVP_MAX_IV_LENGTH] ;    
     char     *plaintextFile  = "bunny.mp4" ;
     int      fd_plain , fd_ctrl , fd_data ;
+    FILE     *log ;
     
     // Initialize the crypto library
     ERR_load_crypto_strings ();
     OpenSSL_add_all_algorithms ();
 
     // Get AtoB Control and Data file descriptor from the argv[]
+    fd_ctrl    = atoi( argv[1] ) ;
+    fd_data    = atoi( argv[2] ) ;
+
     // Open Log File
+    log = fopen("amal/logAmal.txt" , "w" );
+    if( ! log )
+    {
+        fprintf( stderr , "This is Amal. Could not create log file\n");
+        exit(-1) ;
+    }
+    fprintf( log , "This is Amal. Will send encrypted data to FD %d\n" , fd_data);
+    fflush( log ) ;
+
     // Open Plaintext File
+    fd_plain = open(plaintextFile, O_RDONLY); 
+    if (fd_plain == -1) {
+        fprintf(stderr, "\nAmal: Could not open bunny.mp4\n");
+        fclose(log); exit(-1); 
+    }
+
     // Get Basim's RSA Public key generated outside this program by the opessl tool 
-    rsa_pubK  =  getRSAfromFile( .... ) ;
+    rsa_pubK  =  getRSAfromFile("basim_pub_key.pem", 1) ;
 
     // Generate a random session key , and an IV then dump them to Log file
+    RAND_bytes( sessionKey , EVP_MAX_KEY_LENGTH );
+    RAND_bytes( iv , EVP_MAX_IV_LENGTH );
 
     // Encrypt the session key using Basim's Public Key
     uint8_t *encryptedKey = malloc( RSA_size( rsa_pubK ) ) ;  
@@ -47,10 +68,13 @@ void main( int argc , char * argv[] )
         = RSA_public_encrypt( SYMMETRIC_KEY_LEN, sessionKey, encryptedKey, rsa_pubK 
                               , RSA_PKCS1_PADDING );
 
-    // Send the encrypted session key, and  the IV to the AtoB Control Pipe 
-   
+    // Send the encrypted session key, and  the IV to the AtoB Control Pipe
+    printf("The key is %d bytes", encrKey_len); 
+    write(fd_ctrl, encryptedKey, encrKey_len); // send key
+    write(fd_ctrl, iv, EVP_MAX_IV_LENGTH); // send iv
+
     /* Finally, encrypt the plaintext file using the symmetric session key */
-    encryptFile(  ..... );
+    encryptFile(fd_plain, fd_data, encryptedKey, iv);
 
     // Close any open files / descriptors
     // Clean up the crypto library

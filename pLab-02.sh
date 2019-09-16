@@ -22,13 +22,15 @@ cd ../
 
 echo "=============================="
 echo "Compiling all source code"
-rm -f dispatcher amal/amal amal/logAmal.txt basim/basim basim/logBasim.txt bsim/bunny.decr 
-rm -f bunny.mp4
+rm -f dispatcher amal/amal amal/logAmal.txt basim/basim basim/logBasim.txt bunny.decr 
 
 #
 #  Add the necessary commands to build th three executables: 
 #       ./dispatcher      ,      amal/amal      ,      and  basim/basim
 #
+	gcc amal/amal.c    myCrypto.c   -o amal/amal    -lcrypto
+	gcc basim/basim.c  myCrypto.c   -o basim/basim  -lcrypto
+	gcc wrappers.c     dispatcher.c -o dispatcher
 
 echo "=============================="
 echo "Starting the dispatcher"
