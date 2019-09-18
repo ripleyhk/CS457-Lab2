@@ -129,13 +129,12 @@ int encryptFile( int fd_in, int fd_out, unsigned char *key, unsigned char *iv )
     uint8_t plaintext[PLAINTEXT_LEN_MAX]; 
     uint8_t ciphertext[CIPHER_LEN_MAX];
     int plain_bytes = 0; // number of plaintext bytes read
-    int cipher_bytes = 0; // number of cipher bytes encrypted
+    int cipher_bytes = 0; // number of cipher bytes encrypted 
 
     while ((plain_bytes = read(fd_in, plaintext, PLAINTEXT_LEN_MAX)) != 0){
         cipher_bytes = encrypt(plaintext, plain_bytes, key, iv, ciphertext); 
         write(fd_out, ciphertext, cipher_bytes);
     }
-
 }
 
 //-----------------------------------------------------------------------------
@@ -166,7 +165,7 @@ RSA *getRSAfromFile(char * filename, int public)
     file = fopen(filename , "r" );
     if( ! file )
     {
-        fprintf( stderr , "Could not open %s to get RSA.\n", filename);
+        fprintf( stderr , "Could not open %s to get RSA key.\n", filename);
         exit(-1) ;
     }
 
@@ -175,11 +174,11 @@ RSA *getRSAfromFile(char * filename, int public)
 
     // To read a public RSA key, use PEM_read_RSA_PUBKEY()
     if (public)
-        PEM_read_PUBKEY(file, rsa, null, null);
+        PEM_read_RSA_PUBKEY(file, &rsa, NULL, NULL);
 
     // To read a public RSA key, use PEM_read_RSAPrivateKey()
     else
-        PEM_read_RSAPrivateKey(); 
+        PEM_read_RSAPrivateKey(file, &rsa, NULL, NULL); 
 
     // close the binary file 'filename'
     fclose(file); 

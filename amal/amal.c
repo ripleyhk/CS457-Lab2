@@ -43,7 +43,8 @@ void main( int argc , char * argv[] )
         fprintf( stderr , "This is Amal. Could not create log file\n");
         exit(-1) ;
     }
-    fprintf( log , "This is Amal. Will send encrypted data to FD %d\n" , fd_data);
+    fprintf( log , "This is Amal. Will send encrypted data to FD %d and session key/IV to FD %d\n" ,
+        fd_data, fd_ctrl);
     fflush( log ) ;
 
     // Open Plaintext File
@@ -53,12 +54,19 @@ void main( int argc , char * argv[] )
         fclose(log); exit(-1); 
     }
 
-    // Get Basim's RSA Public key generated outside this program by the opessl tool 
-    rsa_pubK  =  getRSAfromFile("basim_pub_key.pem", 1) ;
+    // Get Basim's RSA Public key generated outside this program by the opessl tool
+    rsa_pubK  =  getRSAfromFile("basim/basim_pub_key.pem", 1) ;
 
     // Generate a random session key , and an IV then dump them to Log file
-    RAND_bytes( sessionKey , EVP_MAX_KEY_LENGTH );
-    RAND_bytes( iv , EVP_MAX_IV_LENGTH );
+    RAND_bytes( sessionKey , SYMMETRIC_KEY_LEN );
+    RAND_bytes( iv , INITVECTOR_LEN );
+
+    fprintf(log, "\nUsing this symmetric key of length %d bytes\n", SYMMETRIC_KEY_LEN);
+    BIO_dump_fp(log, (const  char *) sessionKey, SYMMETRIC_KEY_LEN);
+
+    fprintf(log, "\nUsing this Initial Vector of length %d bytes\n", INITVECTOR_LEN);
+    BIO_dump_fp(log, (const char *) iv, INITVECTOR_LEN);
+    fflush( log ) ;
 
     // Encrypt the session key using Basim's Public Key
     uint8_t *encryptedKey = malloc( RSA_size( rsa_pubK ) ) ;  
@@ -69,14 +77,18 @@ void main( int argc , char * argv[] )
                               , RSA_PKCS1_PADDING );
 
     // Send the encrypted session key, and  the IV to the AtoB Control Pipe
-    printf("The key is %d bytes", encrKey_len); 
     write(fd_ctrl, encryptedKey, encrKey_len); // send key
-    write(fd_ctrl, iv, EVP_MAX_IV_LENGTH); // send iv
+    write(fd_ctrl, iv, INITVECTOR_LEN); // send iv
 
     /* Finally, encrypt the plaintext file using the symmetric session key */
-    encryptFile(fd_plain, fd_data, encryptedKey, iv);
+    encryptFile(fd_plain, fd_data, sessionKey, iv);
+    fprintf(log, "\nSuccessfully encrypted file\n");
+    fflush(log);
 
     // Close any open files / descriptors
+    fclose(log); 
+    close(fd_plain); 
+
     // Clean up the crypto library
     RSA_free( rsa_pubK  ) ;
     ERR_free_strings ();

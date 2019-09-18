@@ -1,8 +1,8 @@
 /*----------------------------------------------------------------------------
 pLAB-02   Key Exchange using Public-Key Encryption
 
-Written By:  1- Your Name
-             2- Your Name
+Written By:  1- Hannah Ripley
+             2- Adrian Brazil
 
 Submitted on: 
 ----------------------------------------------------------------------------*/
@@ -43,10 +43,11 @@ void main( int argc , char * argv[] )
         fprintf( stderr , "This is Basim. Could not create log file\n");
         exit(-1) ;
     }
-    fprintf( log , "This is Basim. Will read encrypted data from FD %d\n" , fd_data);
+    fprintf( log , "This is Basim. Will receive encrypted data from FD %d and dession key/IV from FD %d\n" ,
+             fd_data, fd_ctrl);
 
     // Open Decrypted Output File
-    fd_decr = open("basim/bunny.decr" , O_WRONLY | O_CREAT , S_IRUSR | S_IWUSR);
+    fd_decr = open("bunny.decr" , O_WRONLY | O_CREAT , S_IRUSR | S_IWUSR);
     if( fd_decr == -1 )
     {
         fprintf( stderr , "\nBasim: Could not open bunny.decr\n");
@@ -54,28 +55,38 @@ void main( int argc , char * argv[] )
     }
 
     // Get my RSA Private key generated outside this program using the openssl tool 
-    rsa_privK = getRSAfromFile("basim_priv_key.pem", 1) ;
+    rsa_privK = getRSAfromFile("basim/basim_priv_key.pem", 0) ;
 
     // Allocate memory to receive the encrypted session key
     int encrKey_len = RSA_size( rsa_privK ) ;
     uint8_t *encryptedKey = malloc( encrKey_len ) ;  
 
     // Now read the encrypted session key and the IV from the Control Pipe
-    // read ( fd_ctrl , .... ) ;
-    // read ( fd_ctrl , .... ) ;
+    read ( fd_ctrl , encryptedKey, encrKey_len ) ;
+    read ( fd_ctrl , iv, INITVECTOR_LEN ) ;
 
     // Now, decrypt the session key using Basim's private key
     // Using RSA_PKCS1_PADDING padding, which is the currently recommended mode.
-    //int sessionKey_len = 
-    //    RSA_private_decrypt( encrKey_len , encryptedKey, sessionKey , rsa_privK 
-    //                         , RSA_PKCS1_PADDING );
+    int sessionKey_len = 
+        RSA_private_decrypt( encrKey_len , encryptedKey, sessionKey , rsa_privK 
+                             , RSA_PKCS1_PADDING );
 
     // Dump the session key and IV to the Log
+    fprintf(log, "\nUsing this symmetric key of length %d bytes\n", SYMMETRIC_KEY_LEN);
+    BIO_dump_fp(log, (const  char *) sessionKey, SYMMETRIC_KEY_LEN);
+
+    fprintf(log, "\nUsing this Initial Vector of length %d bytes\n", INITVECTOR_LEN);
+    BIO_dump_fp(log, (const char *) iv, INITVECTOR_LEN);
 
     /* Finally, decrypt the ciphertext file using the symmetric session key */
-    // decryptFile( ..... );
+    decryptFile( fd_data, fd_decr, sessionKey, iv );
     
     // Close any open files / descriptors
+    close(fd_ctrl);
+    close(fd_data);
+    close(fd_decr); 
+    fclose(log); 
+
     // Clean up the crypto library    
     RSA_free( rsa_privK ) ;
     ERR_free_strings ();
