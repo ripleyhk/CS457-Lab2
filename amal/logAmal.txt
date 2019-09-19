@@ -1,8 +1,0 @@
-This is Amal. Will send encrypted data to FD 17 and session key/IV to FD 12
-
-Using this symmetric key of length 32 bytes
-0000 - 00 db 90 59 33 78 07 f2-d2 5c df 48 fa 03 52 6d   ...Y3x...\.H..Rm
-0010 - 4c f0 e1 06 77 db ef 67-e8 4c 97 ff 32 eb 1a 9a   L...w..g.L..2...
-
-Using this Initial Vector of length 16 bytes
-0000 - 26 86 95 1b 20 ae e8 19-e1 d3 7f e1 3f 6b 31 7b   &... .......?k1{

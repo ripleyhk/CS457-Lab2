@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # "Script to run pLab-02"
-# "Written by: YOUR NAMES here"
+# "Written by: Hannah Ripley and Adrian Brazil
 
 echo
 echo
@@ -28,9 +28,9 @@ rm -f dispatcher amal/amal amal/logAmal.txt basim/basim basim/logBasim.txt bunny
 #  Add the necessary commands to build th three executables: 
 #       ./dispatcher      ,      amal/amal      ,      and  basim/basim
 #
-	gcc amal/amal.c    myCrypto.c   -o amal/amal    -lcrypto
-	gcc basim/basim.c  myCrypto.c   -o basim/basim  -lcrypto
-	gcc wrappers.c     dispatcher.c -o dispatcher
+	gcc amal/amal.c    myCrypto.c  -g -o amal/amal    -lcrypto
+	gcc basim/basim.c  myCrypto.c  -g -o basim/basim  -lcrypto
+	gcc wrappers.c     dispatcher.c -g -o dispatcher
 
 echo "=============================="
 echo "Starting the dispatcher"

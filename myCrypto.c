@@ -23,7 +23,7 @@ void handleErrors( char *msg)
 }
 
 //-----------------------------------------------------------------------------
-// Encrypt the plaint text stored at 'pPlainText' into the 
+// Encrypt the plain text stored at 'pPlainText' into the 
 // caller-allocated memory at 'pCipherText'
 // Caller must allocate sufficient memory for the cipher text
 // Returns size of the cipher text in bytes
@@ -125,31 +125,109 @@ unsigned decrypt( uint8_t *pCipherText, unsigned cipherText_len,
 
 int encryptFile( int fd_in, int fd_out, unsigned char *key, unsigned char *iv )
 {
-
     uint8_t plaintext[PLAINTEXT_LEN_MAX]; 
     uint8_t ciphertext[CIPHER_LEN_MAX];
     int plain_bytes = 0; // number of plaintext bytes read
-    int cipher_bytes = 0; // number of cipher bytes encrypted 
+    int status ;
+    unsigned len=0 , encryptedLen=0 ;
 
-    while ((plain_bytes = read(fd_in, plaintext, PLAINTEXT_LEN_MAX)) != 0){
-        cipher_bytes = encrypt(plaintext, plain_bytes, key, iv, ciphertext); 
-        write(fd_out, ciphertext, cipher_bytes);
+    /* Create and initialise the context */
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new() ;
+
+    if( ! ctx )
+        handleErrors("encrypt: failed to creat CTX");
+
+    // Initialise the encryption operation.
+    status = EVP_EncryptInit_ex( ctx, ALGORITHM(), NULL, key, iv ) ;
+
+    if( status != 1 )
+        handleErrors("encrypt: failed to EncryptInit_ex"); 
+
+    while ( 1 )
+    {
+        plain_bytes = read(fd_in, plaintext, PLAINTEXT_LEN_MAX ) ;
+        if ( plain_bytes <= 0 )
+            break ;
+        
+        // Call EncryptUpdate as many times as needed (e.g. inside a loop)
+        // to perform regular encryption
+        status = EVP_EncryptUpdate(ctx, ciphertext, &len, plaintext, plain_bytes) ;
+        if( status != 1 )
+            handleErrors("encrypt: failed to EncryptUpdate");
+        encryptedLen += len;
+
+        write(fd_out, ciphertext, len);
     }
+
+    // If additional ciphertext may still be generated,
+    // the pCipherText pointer must be first advanced forward
+    //pCipherText += len ;
+
+    // Finalize the encryption.
+    status = EVP_EncryptFinal_ex( ctx, ciphertext, &len ) ;
+
+    if( status != 1 )
+        handleErrors("encrypt: failed to EncryptFinal_ex");
+    encryptedLen += len;
+
+    write(fd_out, ciphertext, len);
+
+    // len could be 0 if no additional cipher text was generated
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return encryptedLen; 
 }
 
 //-----------------------------------------------------------------------------
 int decryptFile( int fd_in, int fd_out, unsigned char *key, unsigned char *iv )
 {
 
-    uint8_t plaintext[CIPHER_LEN_MAX]; // max = 1024
+    uint8_t plaintext[PLAINTEXT_LEN_MAX]; // max = 1024
     uint8_t ciphertext[CIPHER_LEN_MAX]; // max = 1024
-    int cipher_bytes = 0; // number of ciphertext bytes read
-    int plain_bytes = 0; // number of plaintext bytes decrypted
+    int cipher_bytes = 0; // number of read ciphertext bytes
+    int status ;
+    unsigned len=0 , decryptedLen=0 ; 
 
-    while ((cipher_bytes = read(fd_in, ciphertext, CIPHER_LEN_MAX)) != 0){
-        plain_bytes = decrypt(ciphertext, cipher_bytes, key, iv, plaintext); 
-        write(fd_out, plaintext, plain_bytes);
+    /* Create and initialise the context */
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new() ;
+    if( ! ctx )
+        handleErrors("decrypt: failed to creat CTX");
+        
+    // Initialise the decryption operation.
+    status = EVP_DecryptInit_ex( ctx, ALGORITHM(), NULL, key, iv ) ;
+    if( status != 1 )
+        handleErrors("decrypt: failed to DecryptInit_ex");
+
+    while ( 1 ) 
+    {
+        cipher_bytes = read(fd_in, ciphertext, CIPHER_LEN_MAX); 
+        if ( cipher_bytes <= 0 )
+            break ;
+
+        status = EVP_DecryptUpdate( ctx, plaintext, &len, ciphertext, cipher_bytes) ;
+        if( status != 1 )
+            handleErrors("decrypt: failed to DecryptUpdate");
+        decryptedLen += len;
+
+        write(fd_out, plaintext, len);
     }
+
+    // If additionl decrypted text may still be generated,
+    // the pDecryptedText pointer must be first advanced forward
+    //pDecryptedText += len ;
+
+    // Finalize the decryption.
+    status = EVP_DecryptFinal_ex( ctx, plaintext, &len ) ;
+    if( status != 1 )
+        handleErrors("decrypt: failed to DecryptFinal_ex");
+    decryptedLen += len;
+    write(fd_out, plaintext, len);
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return decryptedLen;
 
 }
 
@@ -182,7 +260,6 @@ RSA *getRSAfromFile(char * filename, int public)
 
     // close the binary file 'filename'
     fclose(file); 
-
     return rsa;
 }
 
